@@ -1,0 +1,521 @@
+<pre>
+<font color="#95a5a6">&#47;*</font>
+<font color="#95a5a6">:Project:Allarm_Clock</font>
+<font color="#95a5a6">:Author: Tiziano Bianchettin</font>
+<font color="#95a5a6">:Date: 10&#47;02&#47;2017</font>
+<font color="#95a5a6">:Revision: 2</font>
+<font color="#95a5a6">:License: Public Domain</font>
+<font color="#95a5a6">thanks to:</font>
+<font color="#95a5a6"> &nbsp;</font><u><font color="#95a5a6">http:&#47;&#47;arduinoenonsolo.blogspot.it&#47;2012&#47;12&#47;orologio-con-arduino-e-il-ds1307.html</font></u><font color="#95a5a6"></font>
+<font color="#95a5a6"> &nbsp;</font><u><font color="#95a5a6">http:&#47;&#47;www.mauroalfieri.it&#47;</font></u><font color="#95a5a6"></font>
+<font color="#95a5a6"> &nbsp;</font><u><font color="#95a5a6">http:&#47;&#47;www.danielealberti.it&#47;</font></u><font color="#95a5a6"></font>
+<font color="#95a5a6"> &nbsp;</font><u><font color="#95a5a6">http:&#47;&#47;www.maffucci.it&#47;</font></u><font color="#95a5a6"></font>
+<font color="#95a5a6"> &nbsp;My electronics laboratory professor &#34;Perito Carli&#34; &nbsp;</font>
+<font color="#95a5a6">*&#47;</font>
+<font color="#434f54">&#47;&#47;************libraries**************&#47;&#47;</font>
+<font color="#5e6d03">#include</font> <font color="#434f54">&lt;</font><font color="#d35400">Wire</font><font color="#434f54">.</font><font color="#000000">h</font><font color="#434f54">&gt;</font>
+<font color="#5e6d03">#include</font> <font color="#434f54">&lt;</font><font color="#000000">RTClib</font><font color="#434f54">.</font><font color="#000000">h</font><font color="#434f54">&gt;</font> <font color="#434f54">&#47;&#47;import RTC library</font>
+<font color="#5e6d03">#include</font> <font color="#434f54">&lt;</font><b><font color="#d35400">LiquidCrystal_I2C</font></b><font color="#434f54">.</font><font color="#000000">h</font><font color="#434f54">&gt;</font> &nbsp;<font color="#434f54">&#47;&#47;import LCD I2C protocol library</font>
+
+<font color="#434f54">&#47;&#47;************************************&#47;&#47;</font>
+<b><font color="#d35400">LiquidCrystal_I2C</font></b> <font color="#000000">lcd</font><font color="#000000">(</font><font color="#000000">0x27</font><font color="#434f54">,</font><font color="#000000">20</font><font color="#434f54">,</font><font color="#000000">4</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; Display &nbsp;I2C 20 x 4</font>
+<b><font color="#d35400">RTC_DS3231</font></b> <font color="#000000">RTC</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47;create object for RTC</font>
+
+<font color="#434f54">&#47;&#47;************Button*****************&#47;&#47;</font>
+<font color="#00979c">int</font> <font color="#000000">P1</font><font color="#434f54">=</font><font color="#000000">6</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; Button SET MENU</font>
+<font color="#00979c">int</font> <font color="#000000">P2</font><font color="#434f54">=</font><font color="#000000">7</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; Button +</font>
+<font color="#00979c">int</font> <font color="#000000">P3</font><font color="#434f54">=</font><font color="#000000">8</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; Button -</font>
+<font color="#00979c">int</font> <font color="#000000">P4</font><font color="#434f54">=</font><font color="#000000">9</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; SWITCH Alarm </font>
+
+<font color="#434f54">&#47;&#47;**************Alarm***************&#47;&#47;</font>
+<font color="#5e6d03">#define</font> <font color="#000000">LED</font> <font color="#000000">13</font> &nbsp;<font color="#434f54">&#47;&#47;output to LED</font>
+<font color="#5e6d03">#define</font> <font color="#000000">buzzer</font> <font color="#000000">10</font>
+<font color="#00979c">int</font> <font color="#000000">motors</font> <font color="#434f54">=</font> <font color="#000000">3</font><font color="#000000">;</font>
+
+<font color="#434f54">&#47;&#47;************Variables**************&#47;&#47;</font>
+<font color="#00979c">int</font> <font color="#000000">hourupg</font><font color="#000000">;</font>
+<font color="#00979c">int</font> <font color="#000000">minupg</font><font color="#000000">;</font>
+<font color="#00979c">int</font> <font color="#000000">yearupg</font><font color="#000000">;</font>
+<font color="#00979c">int</font> <font color="#000000">monthupg</font><font color="#000000">;</font>
+<font color="#00979c">int</font> <font color="#000000">dayupg</font><font color="#000000">;</font>
+<font color="#00979c">int</font> <font color="#000000">menu</font> <font color="#434f54">=</font><font color="#000000">0</font><font color="#000000">;</font> &nbsp;<font color="#434f54">&#47;&#47;menu variable seen in program flowchart</font>
+<font color="#00979c">int</font> <font color="#000000">setAll</font> <font color="#434f54">=</font><font color="#000000">0</font><font color="#000000">;</font> &nbsp;<font color="#434f54">&#47;&#47;alarm toggle variable seen in flowchart</font>
+
+<font color="#00979c">uint8_t</font> <font color="#000000">alarmHours</font> <font color="#434f54">=</font> <font color="#000000">0</font><font color="#434f54">,</font> <font color="#000000">alarmMinutes</font> <font color="#434f54">=</font> <font color="#000000">0</font><font color="#000000">;</font> &nbsp;<font color="#434f54">&#47;&#47; Holds the current alarm time</font>
+
+
+<font color="#00979c">void</font> <font color="#5e6d03">setup</font><font color="#000000">(</font><font color="#000000">)</font>
+<font color="#000000">{</font>
+
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">begin</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">backlight</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">P1</font><font color="#434f54">,</font><font color="#00979c">INPUT_PULLUP</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; </font><u><font color="#434f54">https:&#47;&#47;www.arduino.cc&#47;en&#47;Tutorial&#47;InputPullupSerial</font></u><font color="#434f54"></font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">P2</font><font color="#434f54">,</font><font color="#00979c">INPUT_PULLUP</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; used pullup resistors of Arduino instead of physical pulldown resitors in breadboard</font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">P3</font><font color="#434f54">,</font><font color="#00979c">INPUT_PULLUP</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">P4</font><font color="#434f54">,</font><font color="#00979c">INPUT_PULLUP</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">LED</font><font color="#434f54">,</font><font color="#00979c">OUTPUT</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">buzzer</font><font color="#434f54">,</font> <font color="#00979c">OUTPUT</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; Set buzzer as an output</font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">motors</font><font color="#434f54">,</font> <font color="#00979c">OUTPUT</font><font color="#000000">)</font><font color="#000000">;</font><font color="#434f54">&#47;&#47; set dc motors as output</font>
+ &nbsp;<font color="#000000">printAllOff</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">Wire</font><font color="#434f54">.</font><font color="#d35400">begin</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">begin</font><font color="#000000">(</font><font color="#000000">9600</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">begin</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#434f54">!</font> <font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">begin</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">println</font><font color="#000000">(</font><font color="#005c5f">&#34;RTC is NOT running!&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#434f54">&#47;&#47; Set the date and time at compile time</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">adjust</font><font color="#000000">(</font><b><font color="#d35400">DateTime</font></b><font color="#000000">(</font><font color="#5e6d03">__DATE__</font><font color="#434f54">,</font> <font color="#5e6d03">__TIME__</font><font color="#000000">)</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#00979c">int</font> <font color="#000000">menu</font><font color="#434f54">=</font><font color="#000000">0</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+ 
+<font color="#00979c">void</font> <font color="#5e6d03">loop</font><font color="#000000">(</font><font color="#000000">)</font> <font color="#434f54">&#47;&#47;start of &#39;A&#39; in program flowchart</font>
+<font color="#000000">{</font> 
+
+<font color="#434f54">&#47;&#47; check if you press the SET button and increase the menu index</font>
+ &nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P1</font><font color="#000000">)</font><font color="#434f54">==</font> <font color="#00979c">LOW</font><font color="#000000">)</font> <font color="#434f54">&#47;&#47;P1 pushed</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;<font color="#000000">menu</font><font color="#434f54">=</font><font color="#000000">menu</font><font color="#434f54">+</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;
+ &nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P2</font><font color="#000000">)</font><font color="#434f54">==</font> <font color="#00979c">LOW</font><font color="#000000">)</font><font color="#434f54">&amp;&amp;</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P3</font><font color="#000000">)</font><font color="#434f54">==</font> <font color="#00979c">LOW</font><font color="#000000">)</font><font color="#000000">)</font> &nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">&#47;&#47;P2 and P3 pushed &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;
+ &nbsp;&nbsp;&nbsp;<font color="#000000">DisplaySetHourAll</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">DisplaySetMinuteAll</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">5</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;SETTING ALARM&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">5</font><font color="#434f54">,</font><font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">alarmHours</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">alarmMinutes</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">1000</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+<font color="#434f54">&#47;&#47; in which subroutine should we go?</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">menu</font><font color="#434f54">==</font><font color="#000000">0</font><font color="#000000">)</font> &nbsp;<font color="#434f54">&#47;&#47;all menu options based on menu variable shown in program flowchart</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">DisplayDateTime</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; void DisplayDateTime</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">Alarm</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; Alarm control</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">menu</font><font color="#434f54">==</font><font color="#000000">1</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">DisplaySetHour</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">menu</font><font color="#434f54">==</font><font color="#000000">2</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">DisplaySetMinute</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">menu</font><font color="#434f54">==</font><font color="#000000">3</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">DisplaySetYear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">menu</font><font color="#434f54">==</font><font color="#000000">4</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">DisplaySetMonth</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">menu</font><font color="#434f54">==</font><font color="#000000">5</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">DisplaySetDay</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">menu</font><font color="#434f54">==</font><font color="#000000">6</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">StoreAgg</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;<font color="#434f54">&#47;&#47;save alarm time variables</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">500</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">menu</font><font color="#434f54">=</font><font color="#000000">0</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">&#47;&#47;reset the menu</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">100</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+
+<font color="#00979c">void</font> <font color="#000000">DisplayDateTime</font> <font color="#000000">(</font><font color="#000000">)</font> <font color="#434f54">&#47;&#47;bunch of LCD control methods to display main home&#47;time screen</font>
+<font color="#000000">{</font>
+<font color="#434f54">&#47;&#47; We show the current date and time</font>
+ &nbsp;<b><font color="#d35400">DateTime</font></b> <font color="#d35400">now</font> <font color="#434f54">=</font> <font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">now</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font> <font color="#000000">2</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Time : &#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">hour</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&lt;=</font><font color="#000000">9</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;0&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">hour</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">hourupg</font><font color="#434f54">=</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">hour</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">minute</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&lt;=</font><font color="#000000">9</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;0&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">minute</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">minupg</font><font color="#434f54">=</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">minute</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">second</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&lt;=</font><font color="#000000">9</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;0&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">second</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font> <font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Date : &#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">month</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&lt;=</font><font color="#000000">9</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;0&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">month</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">monthupg</font><font color="#434f54">=</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">month</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;&#47;&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">day</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&lt;=</font><font color="#000000">9</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;0&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">day</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">dayupg</font><font color="#434f54">=</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">day</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;&#47;&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">year</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">yearupg</font><font color="#434f54">=</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">year</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ 
+ &nbsp;<font color="#00979c">char</font> <font color="#000000">DOW</font><font color="#000000">[</font><font color="#000000">]</font><font color="#000000">[</font><font color="#000000">10</font><font color="#000000">]</font><font color="#434f54">=</font><font color="#000000">{</font><font color="#005c5f">&#34;Sunday &nbsp;&nbsp;&#34;</font><font color="#434f54">,</font><font color="#005c5f">&#34;Monday &nbsp;&nbsp;&#34;</font><font color="#434f54">,</font><font color="#005c5f">&#34;Tuesday &nbsp;&#34;</font><font color="#434f54">,</font><font color="#005c5f">&#34;Wednesday&#34;</font><font color="#434f54">,</font><font color="#005c5f">&#34;Thursday &#34;</font><font color="#434f54">,</font><font color="#005c5f">&#34;Friday &nbsp;&nbsp;&#34;</font><font color="#434f54">,</font><font color="#005c5f">&#34;Saturday &#34;</font><font color="#000000">}</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font> <font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font> 
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Day &nbsp;: &#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">DOW</font><font color="#000000">[</font><font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">dayOfTheWeek</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">]</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47; if it appears error in the code, enter the code given below</font>
+ &nbsp;<font color="#434f54">&#47;&#47;lcd.print(DOW[now.dayOfWeek()]);</font>
+<font color="#000000">}</font>
+
+<font color="#00979c">void</font> <font color="#000000">DisplaySetHour</font><font color="#000000">(</font><font color="#000000">)</font> <font color="#434f54">&#47;&#47;if menu variable ==1</font>
+<font color="#000000">{</font>
+<font color="#434f54">&#47;&#47; time setting</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<b><font color="#d35400">DateTime</font></b> <font color="#d35400">now</font> <font color="#434f54">=</font> <font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">now</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P2</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#000000">hourupg</font><font color="#434f54">==</font><font color="#000000">23</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">hourupg</font><font color="#434f54">=</font><font color="#000000">0</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">hourupg</font><font color="#434f54">=</font><font color="#000000">hourupg</font><font color="#434f54">+</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P3</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#000000">hourupg</font><font color="#434f54">==</font><font color="#000000">0</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">hourupg</font><font color="#434f54">=</font><font color="#000000">23</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">hourupg</font><font color="#434f54">=</font><font color="#000000">hourupg</font><font color="#434f54">-</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Set Hour:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">hourupg</font><font color="#434f54">,</font><font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+
+<font color="#00979c">void</font> <font color="#000000">DisplaySetMinute</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&#47;&#47;if menu variable ==2</font>
+<font color="#000000">{</font>
+<font color="#434f54">&#47;&#47; Setting the minutes</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P2</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">minupg</font><font color="#434f54">==</font><font color="#000000">59</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">minupg</font><font color="#434f54">=</font><font color="#000000">0</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">minupg</font><font color="#434f54">=</font><font color="#000000">minupg</font><font color="#434f54">+</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P3</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">minupg</font><font color="#434f54">==</font><font color="#000000">0</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">minupg</font><font color="#434f54">=</font><font color="#000000">59</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">minupg</font><font color="#434f54">=</font><font color="#000000">minupg</font><font color="#434f54">-</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Set Minutes:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">minupg</font><font color="#434f54">,</font><font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+ &nbsp;
+<font color="#00979c">void</font> <font color="#000000">DisplaySetYear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&#47;&#47;if menu variable ==3</font>
+<font color="#000000">{</font>
+<font color="#434f54">&#47;&#47; setting the year</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P2</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font> &nbsp;&nbsp;&nbsp;
+ &nbsp;&nbsp;&nbsp;<font color="#000000">yearupg</font><font color="#434f54">=</font><font color="#000000">yearupg</font><font color="#434f54">+</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P3</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">yearupg</font><font color="#434f54">=</font><font color="#000000">yearupg</font><font color="#434f54">-</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Set Year:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">yearupg</font><font color="#434f54">,</font><font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+
+<font color="#00979c">void</font> <font color="#000000">DisplaySetMonth</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&#47;&#47;if menu variable ==4</font>
+<font color="#000000">{</font>
+<font color="#434f54">&#47;&#47; Setting the month</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P2</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">monthupg</font><font color="#434f54">==</font><font color="#000000">12</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">monthupg</font><font color="#434f54">=</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">monthupg</font><font color="#434f54">=</font><font color="#000000">monthupg</font><font color="#434f54">+</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P3</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">monthupg</font><font color="#434f54">==</font><font color="#000000">1</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">monthupg</font><font color="#434f54">=</font><font color="#000000">12</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">monthupg</font><font color="#434f54">=</font><font color="#000000">monthupg</font><font color="#434f54">-</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Set Month:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">monthupg</font><font color="#434f54">,</font><font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+
+<font color="#00979c">void</font> <font color="#000000">DisplaySetDay</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&#47;&#47;if menu variable ==5</font>
+<font color="#000000">{</font>
+<font color="#434f54">&#47;&#47; Setting the day</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P2</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">dayupg</font><font color="#434f54">==</font><font color="#000000">31</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">dayupg</font><font color="#434f54">=</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">dayupg</font><font color="#434f54">=</font><font color="#000000">dayupg</font><font color="#434f54">+</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P3</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">dayupg</font><font color="#434f54">==</font><font color="#000000">1</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">dayupg</font><font color="#434f54">=</font><font color="#000000">31</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">dayupg</font><font color="#434f54">=</font><font color="#000000">dayupg</font><font color="#434f54">-</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Set Day:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">dayupg</font><font color="#434f54">,</font><font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+
+<font color="#00979c">void</font> <font color="#000000">StoreAgg</font><font color="#000000">(</font><font color="#000000">)</font>
+<font color="#000000">{</font>
+<font color="#434f54">&#47;&#47; Variable saving</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;SAVING IN&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;PROGRESS&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">adjust</font><font color="#000000">(</font><b><font color="#d35400">DateTime</font></b><font color="#000000">(</font><font color="#000000">yearupg</font><font color="#434f54">,</font><font color="#000000">monthupg</font><font color="#434f54">,</font><font color="#000000">dayupg</font><font color="#434f54">,</font><font color="#000000">hourupg</font><font color="#434f54">,</font><font color="#000000">minupg</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+<font color="#00979c">void</font> <font color="#000000">DisplaySetHourAll</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&#47;&#47; Setting the alarm minutes</font>
+<font color="#000000">{</font>
+ &nbsp;<font color="#5e6d03">while</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P1</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">HIGH</font><font color="#000000">)</font><font color="#000000">{</font>
+
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P2</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#000000">alarmHours</font><font color="#434f54">==</font><font color="#000000">23</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">alarmHours</font><font color="#434f54">=</font><font color="#000000">0</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">alarmHours</font><font color="#434f54">=</font><font color="#000000">alarmHours</font><font color="#434f54">+</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P3</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#000000">alarmHours</font><font color="#434f54">==</font><font color="#000000">0</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">alarmHours</font><font color="#434f54">=</font><font color="#000000">23</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">alarmHours</font><font color="#434f54">=</font><font color="#000000">alarmHours</font><font color="#434f54">-</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Set HOUR Alarm:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">alarmHours</font><font color="#434f54">,</font><font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+ <font color="#000000">}</font>
+ <font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+
+<font color="#00979c">void</font> <font color="#000000">DisplaySetMinuteAll</font><font color="#000000">(</font><font color="#000000">)</font><font color="#434f54">&#47;&#47; Setting the alarm minutes</font>
+ <font color="#000000">{</font>
+ &nbsp;<font color="#5e6d03">while</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P1</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">HIGH</font><font color="#000000">)</font><font color="#000000">{</font> 
+
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">clear</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P2</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">alarmMinutes</font><font color="#434f54">==</font><font color="#000000">59</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">alarmMinutes</font><font color="#434f54">=</font><font color="#000000">0</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">alarmMinutes</font><font color="#434f54">=</font><font color="#000000">alarmMinutes</font><font color="#434f54">+</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P3</font><font color="#000000">)</font><font color="#434f54">==</font><font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">alarmMinutes</font><font color="#434f54">==</font><font color="#000000">0</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">alarmMinutes</font><font color="#434f54">=</font><font color="#000000">59</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">alarmMinutes</font><font color="#434f54">=</font><font color="#000000">alarmMinutes</font><font color="#434f54">-</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">0</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Set MIN. Alarm:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">1</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">alarmMinutes</font><font color="#434f54">,</font><font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+ <font color="#000000">}</font>
+ <font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+<font color="#00979c">void</font> <font color="#000000">printAllOn</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">{</font> &nbsp;<font color="#434f54">&#47;&#47;method to print what the current alarm setting is</font>
+ &nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">3</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Alarm: &#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;
+ &nbsp;
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">alarmHours</font> <font color="#434f54">&lt;=</font> <font color="#000000">9</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;0&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">alarmHours</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;:&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">alarmMinutes</font> <font color="#434f54">&lt;=</font> <font color="#000000">9</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;0&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">alarmMinutes</font><font color="#434f54">,</font> <font color="#00979c">DEC</font><font color="#000000">)</font><font color="#000000">;</font> 
+
+<font color="#000000">}</font>
+<font color="#00979c">void</font> <font color="#000000">printAllOnPhoto</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">{</font><font color="#434f54">&#47;&#47;method to print what the current alarm setting is</font>
+ &nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font><font color="#000000">3</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Alarm: SUNRISE&#34;</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+<font color="#00979c">void</font> <font color="#000000">printAllOff</font><font color="#000000">(</font><font color="#000000">)</font> <font color="#000000">{</font><font color="#434f54">&#47;&#47;method to print what the current alarm setting is</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">setCursor</font><font color="#000000">(</font><font color="#000000">0</font><font color="#434f54">,</font> <font color="#000000">3</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">&#34;Alarm: Off &nbsp;&nbsp;&nbsp;&#34;</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;
+<font color="#000000">}</font>
+<font color="#00979c">void</font> <font color="#000000">Alarm</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">{</font> <font color="#434f54">&#47;&#47;alarm control</font>
+ &nbsp;&nbsp;<font color="#5e6d03">if</font><font color="#000000">(</font><font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">P4</font><font color="#000000">)</font><font color="#434f54">==</font> <font color="#00979c">LOW</font><font color="#000000">)</font>
+ &nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;<font color="#000000">setAll</font><font color="#434f54">=</font><font color="#000000">setAll</font><font color="#434f54">+</font><font color="#000000">1</font><font color="#000000">;</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">setAll</font><font color="#434f54">==</font><font color="#000000">0</font><font color="#000000">)</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">printAllOff</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">noTone</font> <font color="#000000">(</font><font color="#000000">buzzer</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">LED</font><font color="#434f54">,</font><font color="#00979c">LOW</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">motors</font><font color="#434f54">,</font><font color="#00979c">LOW</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">setAll</font><font color="#434f54">==</font><font color="#000000">1</font><font color="#000000">)</font> <font color="#434f54">&#47;&#47;time alarm setting</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">printAllOn</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;
+ &nbsp;
+ &nbsp;&nbsp;&nbsp;&nbsp;<b><font color="#d35400">DateTime</font></b> <font color="#d35400">now</font> <font color="#434f54">=</font> <font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">now</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font> <font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">hour</font><font color="#000000">(</font><font color="#000000">)</font> <font color="#434f54">==</font> <font color="#000000">alarmHours</font> <font color="#434f54">&amp;&amp;</font> <font color="#d35400">now</font><font color="#434f54">.</font><font color="#d35400">minute</font><font color="#000000">(</font><font color="#000000">)</font> <font color="#434f54">==</font> <font color="#000000">alarmMinutes</font> <font color="#000000">)</font> <font color="#434f54">&#47;&#47;current time = alarm set time?</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">noBacklight</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b><font color="#d35400">DateTime</font></b> <font color="#d35400">now</font> <font color="#434f54">=</font> <font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">now</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">LED</font><font color="#434f54">,</font><font color="#00979c">HIGH</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">tone</font><font color="#000000">(</font><font color="#000000">buzzer</font><font color="#434f54">,</font><font color="#000000">880</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47;play the note &#34;A5&#34; (LA5)</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">motors</font><font color="#434f54">,</font><font color="#00979c">HIGH</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">delay</font> <font color="#000000">(</font><font color="#000000">300</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">tone</font><font color="#000000">(</font><font color="#000000">buzzer</font><font color="#434f54">,</font><font color="#000000">698</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47;play the note &#34;F6&#34; (FA5)</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">backlight</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font><font color="#000000">{</font> <font color="#434f54">&#47;&#47;turn alarm off</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">noTone</font> <font color="#000000">(</font><font color="#000000">buzzer</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">LED</font><font color="#434f54">,</font><font color="#00979c">LOW</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">motors</font><font color="#434f54">,</font><font color="#00979c">LOW</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font> 
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">setAll</font><font color="#434f54">==</font><font color="#000000">2</font><font color="#000000">)</font> <font color="#434f54">&#47;&#47;photoresistor setting</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">printAllOnPhoto</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;
+ &nbsp;
+ &nbsp;&nbsp;&nbsp;&nbsp;<b><font color="#d35400">DateTime</font></b> <font color="#d35400">now</font> <font color="#434f54">=</font> <font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">now</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#00979c">int</font> <font color="#000000">lightVal</font> <font color="#434f54">=</font> <font color="#d35400">analogRead</font><font color="#000000">(</font><font color="#000000">A0</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47;read potentiometer value</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font> <font color="#000000">lightVal</font> <font color="#434f54">&gt;</font> <font color="#000000">300</font> <font color="#000000">)</font><font color="#434f54">&#47;&#47; tested value for morning sunglight through bedroom window</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">noBacklight</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b><font color="#d35400">DateTime</font></b> <font color="#d35400">now</font> <font color="#434f54">=</font> <font color="#000000">RTC</font><font color="#434f54">.</font><font color="#d35400">now</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">LED</font><font color="#434f54">,</font><font color="#00979c">HIGH</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">tone</font><font color="#000000">(</font><font color="#000000">buzzer</font><font color="#434f54">,</font><font color="#000000">880</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47;play the note &#34;A5&#34; (LA5)</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">motors</font><font color="#434f54">,</font><font color="#00979c">HIGH</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">delay</font> <font color="#000000">(</font><font color="#000000">300</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">tone</font><font color="#000000">(</font><font color="#000000">buzzer</font><font color="#434f54">,</font><font color="#000000">698</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">&#47;&#47;play the note &#34;F6&#34; (FA5)</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">lcd</font><font color="#434f54">.</font><font color="#d35400">backlight</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font><font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">noTone</font> <font color="#000000">(</font><font color="#000000">buzzer</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">LED</font><font color="#434f54">,</font><font color="#00979c">LOW</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">motors</font><font color="#434f54">,</font><font color="#00979c">LOW</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font> 
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">setAll</font><font color="#434f54">==</font><font color="#000000">3</font><font color="#000000">)</font> <font color="#434f54">&#47;&#47;reset alarm menu</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">setAll</font><font color="#434f54">=</font><font color="#000000">0</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">200</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+
+</pre>
